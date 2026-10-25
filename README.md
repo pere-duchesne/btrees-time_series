@@ -1,4 +1,4 @@
-# btrees-time_series
+# Tree-Based Models for Time Series Analysis
 
 A guided walkthrough of **tree-based models for time-series analysis** —
 from the simplest regression trees up to ensembles and gradient boosting,
@@ -137,4 +137,4 @@ that maintains open datasets for Argentina.
 
 ## License
 
-*(Add your license here — e.g. MIT, Apache-2.0, GPL-3.0.)*
+*MIT*
