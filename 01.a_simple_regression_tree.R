@@ -12,7 +12,7 @@ missing<-df|>
   gather(key, value)|>
   group_by(key)|>
   count(missing=is.na(value))|>
-  pivot_wider(names_from=missing,values_from=n, values_fill=0)|>
+  pivot_wider(names_from=missing,values_from=n,values_fill=0)|>
   rename(valid=`FALSE`,nulls=`TRUE`)|>
   mutate(pct_missing=nulls/(nrow(df)))|>
   mutate(pct_valid=1-pct_missing)
@@ -39,8 +39,8 @@ ggplot(data=df, aes(x=Collection))+
 #Train-Test split
 set.seed(0)
 split<-sample.split(df$Collection,SplitRatio=0.8)
-train<-subset(df,split=TRUE)
-test<-subset(df,split=FALSE)
+train<-subset(df,split)
+test<-subset(df,!split)
 
 #Regression Tree
 regtree<-rpart(formula=Collection~.,data=train,control=rpart.control(maxdepth=3))
@@ -50,7 +50,18 @@ fancyRpartPlot(regtree,yesno=2,split.col='black',nn.col='black',caption='',palet
 
 #Predict
 test$target_predict<-predict(regtree,test,type='vector')
+
+simple_regtree<-tibble(target=test$Collection,predictions=test$target_predict)
+MAE<-mean(abs(test$target_predict-test$Collection))
 MSE<-mean((test$target_predict-test$Collection)^2)
+RMSE<-mean((test$target_predict-test$Collection)^2)|>sqrt()
+model<-'Simple RegTree'
+model_performance<-tibble(model,MAE,MSE,RMSE)
+
+source('./decision_trees/sqlite.R')
+Sqlite(simple_regtree,'simple_regtree')
+Sqlite(model_performance,'model_performance')
+dbDisconnect(conn)
 
 #Plot Results
 ggplot(data=test, aes(x=target_predict, y=Collection))+
