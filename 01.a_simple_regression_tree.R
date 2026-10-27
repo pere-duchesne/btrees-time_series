@@ -52,6 +52,7 @@ fancyRpartPlot(regtree,yesno=2,split.col='black',nn.col='black',caption='',palet
 test$target_predict<-predict(regtree,test,type='vector')
 
 simple_regtree<-tibble(target=test$Collection,predictions=test$target_predict)
+
 MAE<-mean(abs(test$target_predict-test$Collection))
 MSE<-mean((test$target_predict-test$Collection)^2)
 RMSE<-mean((test$target_predict-test$Collection)^2)|>sqrt()
@@ -61,7 +62,6 @@ model_performance<-tibble(model,MAE,MSE,RMSE)
 source('./decision_trees/sqlite.R')
 Sqlite(simple_regtree,'simple_regtree')
 Sqlite(model_performance,'model_performance')
-dbDisconnect(conn)
 
 #Plot Results
 ggplot(data=test, aes(x=target_predict, y=Collection))+
