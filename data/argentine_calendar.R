@@ -27,18 +27,18 @@ make_days<-function(years){
 }
 
 retrieve_holidays <- function(years) {
-  path<-'./decision_trees/data/calendar.json'
-  if (file.exists(path)) {
-    calendar<-read_json(path)|>fromJSON()
-    if (!is.null(calendar) && 'year' %in% names(calendar)) {
-      years_loaded<-unique(calendar$year)
-      years<-setdiff(years, years_loaded)
-    }
-  }
-  if (length(years)==0) {
-    message('Years already loaded. Nothing to add.')
-    return(data.frame())
-  }
+  #path<-'./decision_trees/data/calendar.json'
+  #if (file.exists(path)) {
+  #  calendar<-read_json(path)|>fromJSON()
+  #  if (!is.null(calendar) && 'year' %in% names(calendar)) {
+  #    years_loaded<-unique(calendar$year)
+  #    years<-setdiff(years, years_loaded)
+  #  }
+  #}
+  #if (length(years)==0) {
+  #  message('Years already loaded. Nothing to add.')
+  #  return(data.frame())
+  #}
   URL_holidays <- 'https://api.argentinadatos.com/v1/feriados/'
   df <- data.frame()
   for (yr in years) {
