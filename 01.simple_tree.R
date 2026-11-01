@@ -8,8 +8,10 @@ library(rpart)
 library(rpart.plot)
 library(rattle)
 source('./decision_trees/sqlite.R')
+source('./decision_trees/model_performance.R')
 
-df<-read_csv('./decision_trees/data/Movie_regression.csv',show_col_types=FALSE)
+fdirectory<-'./decision_trees/data/'
+df<-read_csv(paste0(fdirectory,'Movie_regression.csv'),show_col_types=FALSE)
 #Check for missing values
 missing<-df|>
   gather(key, value)|>
@@ -32,6 +34,7 @@ ggplot(data=df, aes(x=Time_taken))+
 time_taken<-(!is.na(df$Time_taken)&df$Time_taken>0)
 time_taken<-df$Time_taken[time_taken]
 df[(df$Time_taken==0|is.na(df$Time_taken)),'Time_taken']<-sample(time_taken,size=1)
+write_csv(df,paste0(fdirectory,'Movie_regression_cleaned.csv'))
 
 #Taget->Collection
 ggplot(data=df, aes(x=Collection))+
@@ -54,13 +57,11 @@ fancyRpartPlot(simple_regtree,yesno=2,split.col='black',nn.col='black',caption='
 #Predict
 test$target_predict<-predict(simple_regtree,test,type='vector')
 
-simple_regtree_df<-tibble(model='simple regtree', target=test$Collection,predictions=test$target_predict,loaded_at=now())
+prediction<-test$target_predict
+target<-test$Collection
 
-MAE<-mean(abs(test$target_predict-test$Collection))
-MSE<-mean((test$target_predict-test$Collection)^2)
-RMSE<-sqrt(MSE)
-model<-'Simple RegTree'
-model_performance_simple<-tibble(model,MAE,MSE,RMSE)
+simple_regtree_df<-tibble(model='simple regtree', target=target,predictions=prediction,loaded_at=now())
+model_performance_simple<-model_performance(prediction,target,'Simple RegTree')
 
 Sqlite_write(simple_regtree_df,'regtree_outcomes')
 Sqlite_upsert(data=model_performance_simple,table_name='model_performance',conflict_cols=c('model'))
@@ -76,22 +77,20 @@ full_regtree<-rpart(Collection~.,data=train,control=rpart.control(cp=0))
 rpart.plot(full_regtree)
 printcp(full_regtree)
 plotcp(full_regtree)
-plotcp(regtree)
+plotcp(full_regtree)
 #Graph
 fancyRpartPlot(full_regtree,yesno=2,split.col='black',nn.col='black',caption='',palette='Set2',branch.col='black')
 #Predictions full_regtree
 test$target_predict_full<-predict(full_regtree,test,type='vector')
 
-full_regtree_df<-tibble(model='full regtree', target=test$Collection,predictions=test$target_predict_full,loaded_at=now())
+prediction<-test$target_predict_full
 
-MAE<-mean(abs(test$target_predict_full-test$Collection))
-MSE<-mean((test$target_predict_full-test$Collection)^2)
-RMSE<-sqrt(MSE)
-model<-'Full RegTree'
-model_performance_full<-tibble(model,MAE,MSE,RMSE)
+full_regtree_df<-tibble(model='full regtree',target=target,predictions=prediction,loaded_at=now())
+model_performance_full<-model_performance(prediction,target,'Full RegTree')
 
 Sqlite_write(full_regtree_df,'regtree_outcomes')
 Sqlite_upsert(data=model_performance_full,table_name='model_performance',conflict_cols=c('model'))
+
 #Extract the cp with minimum xerror from tree_model$cptable
 full_cp_table<-full_regtree$cptable
 min_cp_full_tree<-full_cp_table[which.min(full_cp_table[,'xerror']),'CP']
@@ -101,13 +100,10 @@ fancyRpartPlot(pruned_full_regtree,yesno=2,split.col='black',nn.col='black',capt
 
 test$target_predict_full_pruned<-predict(pruned_full_regtree, test, type='vector')
 
-prune_full_regtree_df<-tibble(model='prune full regtree', target=test$Collection,predictions=test$target_predict_full_pruned,loaded_at=now())
+prediction<-test$target_predict_full_pruned
 
-MAE<-mean(abs(test$target_predict_full_pruned-test$Collection))
-MSE<-mean((test$target_predict_full_pruned-test$Collection)^2)
-RMSE<-sqrt(MSE)
-model<-'Prune Full RegTree'
-model_performance_prune_full<-tibble(model,MAE,MSE,RMSE)
+prune_full_regtree_df<-tibble(model='prune full regtree',target=target,predictions=prediction,loaded_at=now())
+model_performance_full_prune<-model_performance(prediction,target,'Prune Full RegTree')
 
 Sqlite_write(prune_full_regtree_df,'regtree_outcomes')
-Sqlite_upsert(data=model_performance_prune_full,table_name='model_performance',conflict_cols=c('model'))
+Sqlite_upsert(data=model_performance_full_prune,table_name='model_performance',conflict_cols=c('model'))
