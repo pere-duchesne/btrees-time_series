@@ -48,6 +48,9 @@ split<-sample.split(df$Collection,SplitRatio=0.8)
 train<-subset(df,split)
 test<-subset(df,!split)
 
+write_csv(train,'./decision_trees/data/train.csv')
+write_csv(test,'./decision_trees/data/test.csv')
+
 #Regression Tree
 simple_regtree<-rpart(formula=Collection~.,data=train,control=rpart.control(maxdepth=3))
 #maxdepth controls the number of tree layers
@@ -60,7 +63,7 @@ test$target_predict<-predict(simple_regtree,test,type='vector')
 prediction<-test$target_predict
 target<-test$Collection
 
-simple_regtree_df<-tibble(model='simple regtree', target=target,predictions=prediction,loaded_at=now())
+simple_regtree_df<-tibble(model='simple regtree',target=target,predictions=prediction,loaded_at=now())
 model_performance_simple<-model_performance(prediction,target,'Simple RegTree')
 
 Sqlite_write(simple_regtree_df,'regtree_outcomes')
@@ -71,39 +74,3 @@ ggplot(data=test, aes(x=target_predict, y=Collection))+
   geom_point(colour='steelblue',alpha=0.85,shape=17)+
   labs(x='Target Prediction',y='Target',title='Prediction vs. Target Values',subtitle='Movie Collection Simple Tree Prediction')+
   theme_minimal(base_size=13)
-
-#Prunning a tree: techniques that prevent tree growth
-full_regtree<-rpart(Collection~.,data=train,control=rpart.control(cp=0))
-rpart.plot(full_regtree)
-printcp(full_regtree)
-plotcp(full_regtree)
-plotcp(full_regtree)
-#Graph
-fancyRpartPlot(full_regtree,yesno=2,split.col='black',nn.col='black',caption='',palette='Set2',branch.col='black')
-#Predictions full_regtree
-test$target_predict_full<-predict(full_regtree,test,type='vector')
-
-prediction<-test$target_predict_full
-
-full_regtree_df<-tibble(model='full regtree',target=target,predictions=prediction,loaded_at=now())
-model_performance_full<-model_performance(prediction,target,'Full RegTree')
-
-Sqlite_write(full_regtree_df,'regtree_outcomes')
-Sqlite_upsert(data=model_performance_full,table_name='model_performance',conflict_cols=c('model'))
-
-#Extract the cp with minimum xerror from tree_model$cptable
-full_cp_table<-full_regtree$cptable
-min_cp_full_tree<-full_cp_table[which.min(full_cp_table[,'xerror']),'CP']
-#Calculates the pruned tree version of the full tree model
-pruned_full_regtree<-prune(full_regtree,cp=min_cp_full_tree)
-fancyRpartPlot(pruned_full_regtree,yesno=2,split.col='black',nn.col='black',caption='',palette='Set2',branch.col='black')
-
-test$target_predict_full_pruned<-predict(pruned_full_regtree, test, type='vector')
-
-prediction<-test$target_predict_full_pruned
-
-prune_full_regtree_df<-tibble(model='prune full regtree',target=target,predictions=prediction,loaded_at=now())
-model_performance_full_prune<-model_performance(prediction,target,'Prune Full RegTree')
-
-Sqlite_write(prune_full_regtree_df,'regtree_outcomes')
-Sqlite_upsert(data=model_performance_full_prune,table_name='model_performance',conflict_cols=c('model'))
