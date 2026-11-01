@@ -1,0 +1,9 @@
+model_performance<-function(prediction,target,model){
+  library(dplyr)
+  MAE<-mean(abs(prediction-target))
+  MSE<-mean((prediction-target)^2)
+  RMSE<-sqrt(MSE)
+  model<-model
+  model_performance<-tibble(model,MAE,MSE,RMSE)
+  return(model_performance)
+}
