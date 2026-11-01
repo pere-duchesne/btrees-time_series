@@ -1,0 +1,113 @@
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(caTools)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+source('./decision_trees/sqlite.R')
+
+df<-read_csv('./decision_trees/data/Movie_regression.csv',show_col_types=FALSE)
+#Check for missing values
+missing<-df|>
+  gather(key, value)|>
+  group_by(key)|>
+  count(missing=is.na(value))|>
+  pivot_wider(names_from=missing,values_from=n,values_fill=0)|>
+  rename(valid=`FALSE`,nulls=`TRUE`)|>
+  mutate(pct_missing=nulls/(nrow(df)))|>
+  mutate(pct_valid=1-pct_missing)
+#Plot missing
+ggplot(missing, aes(x=pct_valid,y=key))+
+  geom_col(fill='red')+
+  labs(title='Missing Data',subtitle='Missing Data By Column',x='PCT Valid',y='Variable Name')
+#Time taken distribution
+ggplot(data=df, aes(x=Time_taken))+
+  geom_histogram(colour='gray',fill='black',bins=30)+
+  labs(title='Time Taken', subtitle = 'Time Taken distribution',x='Time Taken',y='Frequencies')+
+  theme_minimal(base_size=13)
+#Time taken fill missing
+time_taken<-(!is.na(df$Time_taken)&df$Time_taken>0)
+time_taken<-df$Time_taken[time_taken]
+df[(df$Time_taken==0|is.na(df$Time_taken)),'Time_taken']<-sample(time_taken,size=1)
+
+#Taget->Collection
+ggplot(data=df, aes(x=Collection))+
+  geom_histogram(colour='white',fill='red',bins=30)+
+  labs(x='Collection',y='Frequencies',title='Distribution of Collection')+
+  theme_minimal(base_size=13)
+
+#Train-Test split
+set.seed(0)
+split<-sample.split(df$Collection,SplitRatio=0.8)
+train<-subset(df,split)
+test<-subset(df,!split)
+
+#Regression Tree
+simple_regtree<-rpart(formula=Collection~.,data=train,control=rpart.control(maxdepth=3))
+#maxdepth controls the number of tree layers
+summary(simple_regtree)
+fancyRpartPlot(simple_regtree,yesno=2,split.col='black',nn.col='black',caption='',palette='Set2',branch.col='black')
+
+#Predict
+test$target_predict<-predict(simple_regtree,test,type='vector')
+
+simple_regtree_df<-tibble(model='simple regtree', target=test$Collection,predictions=test$target_predict,loaded_at=now())
+
+MAE<-mean(abs(test$target_predict-test$Collection))
+MSE<-mean((test$target_predict-test$Collection)^2)
+RMSE<-sqrt(MSE)
+model<-'Simple RegTree'
+model_performance_simple<-tibble(model,MAE,MSE,RMSE)
+
+Sqlite_write(simple_regtree_df,'regtree_outcomes')
+Sqlite_upsert(data=model_performance_simple,table_name='model_performance',conflict_cols=c('model'))
+
+#Plot Results
+ggplot(data=test, aes(x=target_predict, y=Collection))+
+  geom_point(colour='steelblue',alpha=0.85,shape=17)+
+  labs(x='Target Prediction',y='Target',title='Prediction vs. Target Values',subtitle='Movie Collection Simple Tree Prediction')+
+  theme_minimal(base_size=13)
+
+#Prunning a tree: techniques that prevent tree growth
+full_regtree<-rpart(Collection~.,data=train,control=rpart.control(cp=0))
+rpart.plot(full_regtree)
+printcp(full_regtree)
+plotcp(full_regtree)
+plotcp(regtree)
+#Graph
+fancyRpartPlot(full_regtree,yesno=2,split.col='black',nn.col='black',caption='',palette='Set2',branch.col='black')
+#Predictions full_regtree
+test$target_predict_full<-predict(full_regtree,test,type='vector')
+
+full_regtree_df<-tibble(model='full regtree', target=test$Collection,predictions=test$target_predict_full,loaded_at=now())
+
+MAE<-mean(abs(test$target_predict_full-test$Collection))
+MSE<-mean((test$target_predict_full-test$Collection)^2)
+RMSE<-sqrt(MSE)
+model<-'Full RegTree'
+model_performance_full<-tibble(model,MAE,MSE,RMSE)
+
+Sqlite_write(full_regtree_df,'regtree_outcomes')
+Sqlite_upsert(data=model_performance_full,table_name='model_performance',conflict_cols=c('model'))
+#Extract the cp with minimum xerror from tree_model$cptable
+full_cp_table<-full_regtree$cptable
+min_cp_full_tree<-full_cp_table[which.min(full_cp_table[,'xerror']),'CP']
+#Calculates the pruned tree version of the full tree model
+pruned_full_regtree<-prune(full_regtree,cp=min_cp_full_tree)
+fancyRpartPlot(pruned_full_regtree,yesno=2,split.col='black',nn.col='black',caption='',palette='Set2',branch.col='black')
+
+test$target_predict_full_pruned<-predict(pruned_full_regtree, test, type='vector')
+
+prune_full_regtree_df<-tibble(model='prune full regtree', target=test$Collection,predictions=test$target_predict_full_pruned,loaded_at=now())
+
+MAE<-mean(abs(test$target_predict_full_pruned-test$Collection))
+MSE<-mean((test$target_predict_full_pruned-test$Collection)^2)
+RMSE<-sqrt(MSE)
+model<-'Prune Full RegTree'
+model_performance_prune_full<-tibble(model,MAE,MSE,RMSE)
+
+Sqlite_write(prune_full_regtree_df,'regtree_outcomes')
+Sqlite_upsert(data=model_performance_prune_full,table_name='model_performance',conflict_cols=c('model'))
