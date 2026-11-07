@@ -9,6 +9,7 @@ source('./decision_trees/model_performance.R')
 train<-read_csv('./decision_trees/data/train.csv',show_col_types=FALSE)
 test<-read_csv('./decision_trees/data/test.csv',show_col_types=FALSE)
 #Prunning a tree: a technique that prevent tree growth
+#This script only generates the full tree that is going to be taken later for bagging (also for random forest)
 #Make a full tree to prune afterwards
 full_regtree<-rpart(Collection~.,data=train,control=rpart.control(cp=0))
 #rpart.plot(full_regtree)
