@@ -1,4 +1,3 @@
-library(readr)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -7,49 +6,18 @@ library(caTools)
 library(rpart)
 library(rpart.plot)
 library(rattle)
-source('./decision_trees/sqlite.R')
-source('./decision_trees/model_performance.R')
 
-fdirectory<-'./decision_trees/data/'
-df<-read_csv(paste0(fdirectory,'Movie_regression.csv'),show_col_types=FALSE)
-#Check for missing values
-missing<-df|>
-  gather(key, value)|>
-  group_by(key)|>
-  count(missing=is.na(value))|>
-  pivot_wider(names_from=missing,values_from=n,values_fill=0)|>
-  rename(valid=`FALSE`,nulls=`TRUE`)|>
-  mutate(pct_missing=nulls/(nrow(df)))|>
-  mutate(pct_valid=1-pct_missing)
-#Plot missing
-ggplot(missing, aes(x=pct_valid,y=key))+
-  geom_col(fill='red')+
-  labs(title='Missing Data',subtitle='Missing Data By Column',x='PCT Valid',y='Variable Name')
-#Time taken distribution
-ggplot(data=df, aes(x=Time_taken))+
-  geom_histogram(colour='gray',fill='black',bins=30)+
-  labs(title='Time Taken', subtitle = 'Time Taken distribution',x='Time Taken',y='Frequencies')+
-  theme_minimal(base_size=13)
-#Time taken fill missing
-time_taken<-(!is.na(df$Time_taken)&df$Time_taken>0)
-time_taken<-df$Time_taken[time_taken]
-df[(df$Time_taken==0|is.na(df$Time_taken)),'Time_taken']<-sample(time_taken,size=1)
-write_csv(df,paste0(fdirectory,'Movie_regression_cleaned.csv'))
+dir<-'./decision_trees/'
 
-#Taget->Collection
-ggplot(data=df, aes(x=Collection))+
-  geom_histogram(colour='white',fill='red',bins=30)+
-  labs(x='Collection',y='Frequencies',title='Distribution of Collection')+
-  theme_minimal(base_size=13)
+source(paste0(dir, 'sqlite.R'))
+source(paste0(dir, 'model_performance.R'))
 
 #Train-Test split
-set.seed(0)
-split<-sample.split(df$Collection,SplitRatio=0.8)
-train<-subset(df,split)
-test<-subset(df,!split)
+train<-Sqlite_Read('movie_regression_train_data')
+test<-Sqlite_Read('movie_regression_test_data')
 
-write_csv(train,'./decision_trees/data/train.csv')
-write_csv(test,'./decision_trees/data/test.csv')
+train<-select(train,-id)
+train<-select(test,-id)
 
 #Regression Tree
 simple_regtree<-rpart(formula=Collection~.,data=train,control=rpart.control(maxdepth=3))
