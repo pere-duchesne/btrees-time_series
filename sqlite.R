@@ -1,5 +1,12 @@
 library(RSQLite)
 
+Sqlite_Read<-function(table_name){
+  conn<-dbConnect(SQLite(), './decision_trees/_.sqlite')
+  data<-dbGetQuery(conn,paste0('select * from ',table_name,';'))
+  dbDisconnect(conn)
+  return(data)
+}
+
 Sqlite_write<-function(df,table_name){
   conn<-dbConnect(SQLite(), './decision_trees/_.sqlite')
   dbWriteTable(conn,table_name,df,append=TRUE,row.names=FALSE)
@@ -7,6 +14,7 @@ Sqlite_write<-function(df,table_name){
 }
 
 Sqlite_upsert<-function(data,table_name,conflict_cols,create_if_missing=TRUE) {
+    conn<-dbConnect(SQLite(), './decision_trees/_.sqlite')
     if (create_if_missing) {
     infer_sql_type <- function(x) {
       if (inherits(x, "Date")) return("DATE")
