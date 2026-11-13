@@ -7,9 +7,13 @@ Sqlite_Read<-function(table_name){
   return(data)
 }
 
-Sqlite_write<-function(df,table_name){
+Sqlite_write<-function(df,table_name,append=TRUE){
   conn<-dbConnect(SQLite(), './decision_trees/_.sqlite')
-  dbWriteTable(conn,table_name,df,append=TRUE,row.names=FALSE)
+  if (append){
+    dbWriteTable(conn,table_name,df,append=TRUE,row.names=FALSE)
+    }else{
+    dbWriteTable(conn,table_name,df,overwrite=TRUE,row.names=FALSE)
+  }
   dbDisconnect(conn)
 }
 
@@ -45,4 +49,5 @@ Sqlite_upsert<-function(data,table_name,conflict_cols,create_if_missing=TRUE) {
   }
   on.exit(dbRemoveTable(conn, tmp_table), add = TRUE)
   dbExecute(conn, sql)
+  dbDisconnect(conn)
 }
