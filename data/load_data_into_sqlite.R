@@ -52,5 +52,5 @@ train<-subset(movies,split)
 test<-subset(movies,!split)
 
 Sqlite_upsert(movies,'movie_regression_data',conflict_cols=c('id'))
-Sqlite_upsert(train,'movie_regression_train_data',conflict_cols=c('id'))
-Sqlite_upsert(test,'movie_regression_test_data',conflict_cols=c('id'))
+Sqlite_write(train,'movie_regression_train_data',append=FALSE)
+Sqlite_write(test,'movie_regression_test_data',append=FALSE)
