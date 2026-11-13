@@ -53,8 +53,8 @@ The repository is organized as a sequence of stages that build on each other:
 | `01` | Simple regression trees |
 | `02` | Pruning and complexity control |
 | `03` | Hyperparameter optimization |
-| `04` | Ensemble techniques (bagging, random forests, boosting) |
-| `05` | XGBoost |
+| `04` | Ensemble techniques (bagging, random forests) |
+| `05` | Boosting trechniques (gradient, XGBoost) |
 | `06` | Time-series analysis with tree-based models |
 
 Each stage has its own folder with code, data (or data-generation scripts),
